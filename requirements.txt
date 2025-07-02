@@ -1,0 +1,8 @@
+# Dépendances pour le gestionnaire de tâches Python
+click==8.1.7
+pytest==7.4.4
+pytest-cov==4.1.0
+rich==13.7.0
+flask
+flasgger
+
