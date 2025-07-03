@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flasgger import Swagger
 import task_manager
+import user_manager
 
 app = Flask(__name__)
 
@@ -106,17 +107,18 @@ def list_tasks():
         return error_response, status_code
 
     # Récupération de toutes les tâches
-    tasks = task_manager.get_tasks()
+    tasks = task_manager.get_tasks()["tasks"]
+
 
     # Filtrer par status si demandé
     if filter_status:
         tasks = [t for t in tasks if t["status"] == filter_status]
+    status_order = {"TODO": 0, "ONGOING": 1, "DONE": 2}
 
-    # Trier
-    try:
+    if sort_by == "status":
+        tasks.sort(key=lambda t: status_order.get(t["status"], 99), reverse=not ascending)
+    else:
         tasks.sort(key=lambda t: t[sort_by], reverse=not ascending)
-    except KeyError:
-        return jsonify(error="Sorting key error"), 400
 
     total_tasks = len(tasks)
     total_pages = (total_tasks + page_size - 1) // page_size
@@ -173,6 +175,87 @@ def create_task():
     except ValueError as e:
         return jsonify(error=str(e)), 400
 
+@app.route("/users", methods=["POST"])
+def create_user():
+    """
+    Create a new user
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - email
+          properties:
+            name:
+              type: string
+              maxLength: 50
+            email:
+              type: string
+    responses:
+      201:
+        description: User created successfully
+      400:
+        description: Invalid input or duplicate email
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify(error="Missing JSON body"), 400
+
+    try:
+        user = user_manager.create_user(
+            name=data.get("name", ""),
+            email=data.get("email", "")
+        )
+        return jsonify(user), 201
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+        
+@app.route("/tasks/<int:task_id>/assign", methods=["PATCH"])
+def assign_task(task_id):
+    """
+    Assign a task to a user or unassign it
+    ---
+    parameters:
+      - name: task_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the task to assign
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            user_id:
+              type: integer
+              nullable: true
+              description: ID of the user to assign to. Null to unassign.
+    responses:
+      200:
+        description: Task assigned/unassigned successfully
+      400:
+        description: Missing or invalid input
+      404:
+        description: Task or user not found
+    """
+    data = request.get_json()
+    if data is None or "user_id" not in data:
+        return jsonify(error="Missing 'user_id' in request body"), 400
+
+    user_id = data["user_id"]  # can be None (for unassigning)
+
+    try:
+        task = task_manager.assign_task(task_id, user_id)
+        return jsonify(task)
+    except LookupError as e:
+        return jsonify(error=str(e)), 404
+    except Exception as e:
+        return jsonify(error=str(e)), 400
 
 @app.route("/tasks/<int:task_id>", methods=["GET"])
 def get_task(task_id):
@@ -369,6 +452,74 @@ def search():
         "page_size": page_size
     })
 
+@app.route("/users", methods=["GET"])
+def list_users():
+    """
+    List all users with pagination (sorted by name)
+    ---
+    parameters:
+      - name: page
+        in: query
+        type: integer
+        required: false
+        default: 1
+      - name: page_size
+        in: query
+        type: integer
+        required: false
+        default: 20
+    responses:
+      200:
+        description: List of users
+        schema:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                type: object
+            total_users:
+              type: integer
+            total_pages:
+              type: integer
+            current_page:
+              type: integer
+            page_size:
+              type: integer
+      400:
+        description: Invalid pagination
+    """
+    page, page_size, error_response, status_code = parse_pagination_args()
+    if error_response:
+        return error_response, status_code
+
+    try:
+        result = user_manager.list_users(page, page_size)
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    
+@app.route("/users/<int:user_id>", methods=["GET"])
+def get_user(user_id):
+    """
+    Get user by ID
+    ---
+    parameters:
+      - name: user_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: User found
+      404:
+        description: User not found
+    """
+    try:
+        user = user_manager.get_user_by_id(user_id)
+        return jsonify(user)
+    except LookupError:
+        return jsonify(error="User not found"), 404
 
 if __name__ == "__main__":
     app.run(debug=True)

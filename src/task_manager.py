@@ -2,7 +2,7 @@ import json
 import os
 from typing import List, Dict, Optional, Union
 from datetime import datetime
-
+from src.user_manager import get_user_by_id  
 DATA_FILE = "tasks.json"
 VALID_STATUSES = {"TODO", "ONGOING", "DONE"}
 
@@ -12,17 +12,18 @@ DEFAULT_TASKS = [
         "title": "Première tâche",
         "description": "Description de la première tâche",
         "status": "TODO",
-        "created_at": datetime.now().isoformat()
+        "created_at": datetime.now().isoformat(),
+        "assignee_id": None
     },
     {
         "id": 2,
         "title": "Deuxième tâche",
         "description": "Description de la deuxième tâche",
         "status": "DONE",
-        "created_at": datetime.now().isoformat()
+        "created_at": datetime.now().isoformat(),
+        "assignee_id": None
     }
 ]
-
 def _load_tasks() -> List[Dict]:
     if os.path.exists(DATA_FILE):
         try:
@@ -99,11 +100,12 @@ def add_task(title: str, description: str = "") -> Dict:
 
     new_id = max((t["id"] for t in task_list), default=0) + 1
     new_task = {
-        "id": new_id,
-        "title": title,
-        "description": description,
-        "status": "TODO",
-        "created_at": datetime.now().isoformat()
+    "id": new_id,
+    "title": title,
+    "description": description,
+    "status": "TODO",
+    "created_at": datetime.now().isoformat(),
+    "assignee_id": None 
     }
     task_list.append(new_task)
     _save_tasks(task_list)
@@ -167,3 +169,25 @@ def search_tasks(keyword: str) -> List[Dict]:
     keyword_lower = keyword.lower()
     return [t for t in task_list if keyword_lower in t["title"].lower() or keyword_lower in t["description"].lower()]
 
+
+
+# Add to task_manager.py
+def assign_task(task_id: Union[int, str], user_id: Optional[Union[int, str]]) -> Dict:
+    """
+    Assigne une tâche à un utilisateur.
+    - user_id=None → désassignation
+    - LookupError si tâche ou utilisateur inexistant
+    """
+    task = get_task_by_id(task_id)
+
+    if user_id is None:
+        task["assignee_id"] = None
+    else:
+        try:
+            user = get_user_by_id(user_id)
+            task["assignee_id"] = user["id"]
+        except LookupError:
+            raise LookupError("User not found")
+
+    _save_tasks(task_list)
+    return task
