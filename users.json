@@ -4,5 +4,11 @@
     "name": "salma",
     "email": "salma@gmail.com",
     "created_at": "2025-07-02T21:21:58.490594"
+  },
+  {
+    "id": 2,
+    "name": "Testeur",
+    "email": "tester@gmail.com",
+    "created_at": "2025-07-03T16:13:00.394340"
   }
 ]

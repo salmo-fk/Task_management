@@ -1,6 +1,10 @@
 import pytest
 import re
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from src.user_manager import create_user, list_users, get_user_by_id
+
 
 # Mock user store for isolated tests
 @pytest.fixture

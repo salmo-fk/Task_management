@@ -28,6 +28,12 @@ http://localhost:5000/docs
 # Tests simples
 pytest
 
+# Tests Tasks
+pytest
+
+# Tests Users
+pytest  
+
 # Tests avec couverture
 pytest --cov=src --cov-report=html
 

@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify
 from flasgger import Swagger
-import task_manager
-import user_manager
+#import task_manager
+#import user_manager
+from src import task_manager
+from src import user_manager
+
 
 app = Flask(__name__)
 
